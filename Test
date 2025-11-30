@@ -1,0 +1,88 @@
+IDENTIFICATION DIVISION.
+       PROGRAM-ID. FileReadTemplate.
+       AUTHOR.     YourName.
+       DATE-WRITTEN. Today.
+
+       ENVIRONMENT DIVISION.
+       INPUT-OUTPUT SECTION.
+       FILE-CONTROL.
+      * Map the internal file name (INPUT-FILE) to the physical file on disk.
+      * "input.txt" can be a static path or mapped via JCL/Environment variables.
+           SELECT INPUT-FILE ASSIGN TO "input.dat"
+               ORGANIZATION IS LINE SEQUENTIAL
+               FILE STATUS IS WS-FILE-STATUS.
+
+       DATA DIVISION.
+       FILE SECTION.
+       FD  INPUT-FILE.
+      * Define the record layout of the file here.
+       01  INPUT-RECORD.
+           05  IN-ID           PIC 9(05).
+           05  IN-NAME         PIC X(20).
+           05  IN-AMOUNT       PIC 9(05)V99.
+           05  FILLER          PIC X(50).
+
+       WORKING-STORAGE SECTION.
+      * Variables for file status handling
+       01  WS-FILE-STATUS      PIC X(02).
+           88  FS-OK           VALUE "00".
+           88  FS-EOF          VALUE "10".
+
+      * Switches/Flags
+       01  WS-EOF-FLAG         PIC X(01) VALUE 'N'.
+           88  END-OF-FILE     VALUE 'Y'.
+
+      * Counters (Optional)
+       01  WS-RECORD-COUNT     PIC 9(05) VALUE 0.
+
+       PROCEDURE DIVISION.
+       000-MAIN-LOGIC.
+           PERFORM 100-INITIALIZE
+           PERFORM 200-PROCESS-FILE
+           PERFORM 300-CLEANUP
+           STOP RUN.
+
+       100-INITIALIZE.
+           DISPLAY "Program Started."
+           
+           OPEN INPUT INPUT-FILE
+           
+           IF NOT FS-OK
+               DISPLAY "Error opening file. Status: " WS-FILE-STATUS
+               MOVE 'Y' TO WS-EOF-FLAG
+           ELSE
+               PERFORM 150-READ-RECORD
+           END-IF.
+
+       150-READ-RECORD.
+           READ INPUT-FILE
+               AT END
+                   MOVE 'Y' TO WS-EOF-FLAG
+               NOT AT END
+                   ADD 1 TO WS-RECORD-COUNT
+           END-READ.
+
+       200-PROCESS-FILE.
+      * The standard loop: Perform until the EOF flag is set to Yes
+           PERFORM UNTIL END-OF-FILE
+               
+               PERFORM 250-HANDLE-DATA
+               
+               PERFORM 150-READ-RECORD
+           END-PERFORM.
+
+       250-HANDLE-DATA.
+      * -------------------------------------------------------
+      * YOUR BUSINESS LOGIC GOES HERE
+      * -------------------------------------------------------
+           DISPLAY "Processing Record #" WS-RECORD-COUNT 
+           DISPLAY "ID: " IN-ID " Name: " IN-NAME
+           .
+
+       300-CLEANUP.
+           IF WS-FILE-STATUS = "00" OR "10"
+               CLOSE INPUT-FILE
+           END-IF
+           
+           DISPLAY "Program Finished."
+           DISPLAY "Total Records Processed: " WS-RECORD-COUNT.
